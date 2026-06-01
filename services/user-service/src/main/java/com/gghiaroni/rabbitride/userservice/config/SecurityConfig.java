@@ -1,4 +1,4 @@
-package com.gghiaroni.rabbitride.userservice.user.config;
+package com.gghiaroni.rabbitride.userservice.config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
