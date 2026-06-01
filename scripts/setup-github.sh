@@ -1,127 +1,103 @@
 #!/usr/bin/env bash
 # =============================================================================
-# RabbitRide — Setup automático no GitHub
+# RabbitRide — Setup GitHub (IDEMPOTENTE)
 # =============================================================================
-# Cria o repositório, labels, milestones e issues do projeto RabbitRide.
-#
-# Pré-requisitos:
-#   1. GitHub CLI instalado:  brew install gh
-#   2. Autenticado:            gh auth login
+# Cria labels, milestones e issues. Pode rodar várias vezes — só cria o que
+# ainda não existe. Pré-requisitos: gh CLI instalado e autenticado.
 #
 # Uso:
-#   chmod +x setup-github.sh
-#   ./setup-github.sh
-#
-# Rode apenas UMA vez por repositório. Para refazer, delete o repo no GitHub
-# (gh repo delete <user>/rabbitride --yes) e rode de novo.
+#   chmod +x scripts/setup-github.sh
+#   ./scripts/setup-github.sh
 # =============================================================================
 
 set -euo pipefail
 
-# ----------------------------------------------------------------------------
-# Configuração — edite se quiser
-# ----------------------------------------------------------------------------
 REPO_NAME="${REPO_NAME:-rabbitride}"
-REPO_DESCRIPTION="Sistema de aluguel de carros event-driven com Spring Boot, microsserviços e RabbitMQ"
-VISIBILITY="${VISIBILITY:-public}"   # public ou private
-
-# ----------------------------------------------------------------------------
-# Pré-flight
-# ----------------------------------------------------------------------------
-command -v gh >/dev/null 2>&1 || {
-  echo "❌ GitHub CLI (gh) não encontrado. Instale com: brew install gh"
-  exit 1
-}
-
-gh auth status >/dev/null 2>&1 || {
-  echo "❌ Não autenticado no GitHub CLI. Rode: gh auth login"
-  exit 1
-}
-
 GITHUB_USER="${GITHUB_USER:-$(gh api user --jq .login)}"
 REPO="$GITHUB_USER/$REPO_NAME"
 
+command -v gh >/dev/null 2>&1 || { echo "❌ Instale: brew install gh"; exit 1; }
+gh auth status >/dev/null 2>&1 || { echo "❌ Rode: gh auth login"; exit 1; }
+gh repo view "$REPO" >/dev/null 2>&1 || { echo "❌ Repo $REPO não existe"; exit 1; }
+
 echo "================================================================"
-echo " RabbitRide — setup GitHub"
+echo " RabbitRide — setup idempotente em $REPO"
 echo "================================================================"
-echo " Repositório: $REPO"
-echo " Visibilidade: $VISIBILITY"
-echo "================================================================"
-read -p "Continuar? [y/N] " -n 1 -r
-echo
-[[ $REPLY =~ ^[Yy]$ ]] || { echo "Cancelado."; exit 0; }
 
 # ----------------------------------------------------------------------------
-# 1. Cria repositório (se não existir)
+# Lê estado atual
 # ----------------------------------------------------------------------------
-if gh repo view "$REPO" >/dev/null 2>&1; then
-  echo "ℹ️  Repositório $REPO já existe — pulando criação."
-else
-  echo "📦 Criando repositório $REPO..."
-  gh repo create "$REPO" \
-    --"$VISIBILITY" \
-    --description "$REPO_DESCRIPTION" \
-    --add-readme
-fi
+echo "🔍 Lendo estado atual..."
+
+EXISTING_MILESTONES=$(gh api "repos/$REPO/milestones?state=all" --jq '.[].title' 2>/dev/null || echo "")
+EXISTING_ISSUES=$(gh issue list --repo "$REPO" --state all --limit 200 --json title --jq '.[].title' 2>/dev/null || echo "")
+
+echo "   • Milestones existentes: $(echo -n "$EXISTING_MILESTONES" | grep -c '^' || true)"
+echo "   • Issues existentes:     $(echo -n "$EXISTING_ISSUES" | grep -c '^' || true)"
 
 # ----------------------------------------------------------------------------
-# 2. Labels
+# Labels
 # ----------------------------------------------------------------------------
-echo "🏷️  Criando labels..."
-create_label() {
-  gh label create "$1" --color "$2" --description "$3" --repo "$REPO" --force >/dev/null 2>&1 || true
+echo "🏷️  Garantindo labels..."
+ensure_label() {
+  gh label create "$1" --color "$2" --description "$3" --repo "$REPO" --force >/dev/null 2>&1
   echo "   • $1"
 }
-
-create_label "infra"                "0e8a16" "Docker, CI, build, configuração de infraestrutura"
-create_label "messaging"            "fbca04" "RabbitMQ, eventos, filas, DLQ"
-create_label "security"             "d93f0b" "Autenticação, autorização, JWT"
-create_label "docs"                 "5319e7" "Documentação"
-create_label "tests"                "c5def5" "Testes unitários e de integração"
-create_label "user-service"         "1d76db" "Microsserviço user-service"
-create_label "car-service"          "1d76db" "Microsserviço car-service"
-create_label "rental-service"       "1d76db" "Microsserviço rental-service"
-create_label "analysis-service"     "1d76db" "Microsserviço analysis-service"
-create_label "notification-service" "1d76db" "Microsserviço notification-service"
+ensure_label "infra"                "0e8a16" "Docker, CI, build, configuração de infraestrutura"
+ensure_label "messaging"            "fbca04" "RabbitMQ, eventos, filas, DLQ"
+ensure_label "security"             "d93f0b" "Autenticação, autorização, JWT"
+ensure_label "docs"                 "5319e7" "Documentação"
+ensure_label "tests"                "c5def5" "Testes unitários e de integração"
+ensure_label "user-service"         "1d76db" "Microsserviço user-service"
+ensure_label "car-service"          "1d76db" "Microsserviço car-service"
+ensure_label "rental-service"       "1d76db" "Microsserviço rental-service"
+ensure_label "analysis-service"     "1d76db" "Microsserviço analysis-service"
+ensure_label "notification-service" "1d76db" "Microsserviço notification-service"
 
 # ----------------------------------------------------------------------------
-# 3. Helpers para milestones e issues
+# Helpers (passa milestone pelo NOME, não pelo número — esse era o bug)
 # ----------------------------------------------------------------------------
-mk_milestone() {
+ensure_milestone() {
   local title="$1"
   local description="$2"
-  gh api "repos/$REPO/milestones" \
-    -f title="$title" \
-    -f description="$description" \
-    -f state="open" \
-    --jq '.number'
+  if echo "$EXISTING_MILESTONES" | grep -qFx -- "$title"; then
+    echo "   ↪ existe: $title" >&2
+  else
+    gh api "repos/$REPO/milestones" \
+      -f title="$title" \
+      -f description="$description" \
+      -f state="open" >/dev/null
+    EXISTING_MILESTONES="$EXISTING_MILESTONES
+$title"
+    echo "   ✓ criada: $title" >&2
+  fi
+  echo "$title"
 }
 
-# Lê o body da issue via stdin (heredoc).
 mk_issue() {
-  local milestone="$1"
+  local milestone_title="$1"
   local labels="$2"
   local title="$3"
   local body
   body=$(cat)
+  if echo "$EXISTING_ISSUES" | grep -qFx -- "$title"; then
+    printf "   ↪ existe: %s\n" "$title"
+    return
+  fi
   gh issue create \
     --repo "$REPO" \
     --title "$title" \
     --body "$body" \
-    --milestone "$milestone" \
+    --milestone "$milestone_title" \
     --label "$labels" >/dev/null
   printf "   ✓ %s\n" "$title"
 }
 
-# ----------------------------------------------------------------------------
-# 4. Milestones + Issues
-# ----------------------------------------------------------------------------
-
 # ============================================================================
 # M1 — Infraestrutura & Docker Compose
 # ============================================================================
-echo "🎯 Milestone 1 — Infraestrutura & Docker Compose"
-M1=$(mk_milestone "M1 — Infraestrutura & Docker Compose" \
+echo "🎯 M1 — Infraestrutura & Docker Compose"
+M1=$(ensure_milestone "M1 — Infraestrutura & Docker Compose" \
   "Estrutura do mono-repo, parent POM, Docker Compose com Postgres, Redis, RabbitMQ e MailHog, CI básico.")
 
 mk_issue "$M1" "infra" "Estrutura inicial do mono-repo" <<'EOF'
@@ -182,10 +158,10 @@ mk_issue "$M1" "infra,tests" "GitHub Actions: build e testes em PR" <<'EOF'
 EOF
 
 # ============================================================================
-# M2 — User Service (auth)
+# M2 — User Service
 # ============================================================================
-echo "🎯 Milestone 2 — User Service"
-M2=$(mk_milestone "M2 — User Service (auth + JWT)" \
+echo "🎯 M2 — User Service"
+M2=$(ensure_milestone "M2 — User Service (auth + JWT)" \
   "Cadastro, login e emissão de JWT stateless. Base de autenticação para os demais serviços.")
 
 mk_issue "$M2" "user-service,infra" "Bootstrap do user-service" <<'EOF'
@@ -265,8 +241,8 @@ EOF
 # ============================================================================
 # M3 — Car Service
 # ============================================================================
-echo "🎯 Milestone 3 — Car Service"
-M3=$(mk_milestone "M3 — Car Service (catálogo + Redis)" \
+echo "🎯 M3 — Car Service"
+M3=$(ensure_milestone "M3 — Car Service (catálogo + Redis)" \
   "Catálogo de carros com cache Redis e endpoints internos de reserva/liberação.")
 
 mk_issue "$M3" "car-service,infra" "Bootstrap do car-service" <<'EOF'
@@ -335,8 +311,8 @@ EOF
 # ============================================================================
 # M4 — RabbitMQ: topologia base
 # ============================================================================
-echo "🎯 Milestone 4 — RabbitMQ: topologia base"
-M4=$(mk_milestone "M4 — RabbitMQ: topologia base" \
+echo "🎯 M4 — RabbitMQ: topologia base"
+M4=$(ensure_milestone "M4 — RabbitMQ: topologia base" \
   "Módulo commons com configuração de exchanges, queues, bindings e DLQ compartilhada por todos os serviços.")
 
 mk_issue "$M4" "messaging,infra" "Módulo commons com configuração AMQP" <<'EOF'
@@ -396,10 +372,10 @@ mk_issue "$M4" "messaging,docs" "Documentar topologia no README com Mermaid" <<'
 EOF
 
 # ============================================================================
-# M5 — Rental Service (orquestrador)
+# M5 — Rental Service
 # ============================================================================
-echo "🎯 Milestone 5 — Rental Service"
-M5=$(mk_milestone "M5 — Rental Service (orquestrador)" \
+echo "🎯 M5 — Rental Service"
+M5=$(ensure_milestone "M5 — Rental Service (orquestrador)" \
   "Serviço central que recebe a solicitação, publica eventos, consome resultado da análise e coordena a reserva do carro.")
 
 mk_issue "$M5" "rental-service,infra" "Bootstrap do rental-service" <<'EOF'
@@ -484,8 +460,8 @@ EOF
 # ============================================================================
 # M6 — Analysis Service
 # ============================================================================
-echo "🎯 Milestone 6 — Analysis Service"
-M6=$(mk_milestone "M6 — Analysis Service" \
+echo "🎯 M6 — Analysis Service"
+M6=$(ensure_milestone "M6 — Analysis Service" \
   "Consumer da solicitação que faz análise simulada e publica resultado. Showcase de retry + DLQ.")
 
 mk_issue "$M6" "analysis-service,infra" "Bootstrap do analysis-service" <<'EOF'
@@ -550,8 +526,8 @@ EOF
 # ============================================================================
 # M7 — Notification Service
 # ============================================================================
-echo "🎯 Milestone 7 — Notification Service"
-M7=$(mk_milestone "M7 — Notification Service" \
+echo "🎯 M7 — Notification Service"
+M7=$(ensure_milestone "M7 — Notification Service" \
   "Consumer que dispara e-mail ao usuário. Demonstra desacoplamento total — não conhece nenhum outro serviço.")
 
 mk_issue "$M7" "notification-service,infra" "Bootstrap do notification-service" <<'EOF'
@@ -615,8 +591,8 @@ EOF
 # ============================================================================
 # M8 — Documentação & demo
 # ============================================================================
-echo "🎯 Milestone 8 — Documentação & demo"
-M8=$(mk_milestone "M8 — Documentação & demo" \
+echo "🎯 M8 — Documentação & demo"
+M8=$(ensure_milestone "M8 — Documentação & demo" \
   "README mestre, Swagger, Postman collection, vídeo de demo e release v1.0.0.")
 
 mk_issue "$M8" "docs" "README mestre com diagrama Mermaid" <<'EOF'
@@ -673,19 +649,10 @@ mk_issue "$M8" "docs" "Tag v1.0.0 + release notes" <<'EOF'
 **Como gerar:** `gh release create v1.0.0 --generate-notes`
 EOF
 
-# ----------------------------------------------------------------------------
-# 5. Resumo final
-# ----------------------------------------------------------------------------
 echo
 echo "================================================================"
-echo " ✅ RabbitRide pronto no GitHub!"
+echo " ✅ Setup concluído!"
 echo "================================================================"
-echo " Repositório: https://github.com/$REPO"
-echo " Milestones:  https://github.com/$REPO/milestones"
-echo " Issues:      https://github.com/$REPO/issues"
-echo "================================================================"
-echo " Próximo passo sugerido:"
-echo "   git clone https://github.com/$REPO.git"
-echo "   cd $REPO_NAME"
-echo "   # Começar pela primeira issue da M1"
+echo " Milestones: https://github.com/$REPO/milestones"
+echo " Issues:     https://github.com/$REPO/issues"
 echo "================================================================"
