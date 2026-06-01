@@ -1,41 +1,37 @@
 # RabbitRide — infraestrutura local
-# Subir:   docker compose -f infra/docker-compose.yml up -d
-# Parar:   docker compose -f infra/docker-compose.yml down
-# Limpar:  docker compose -f infra/docker-compose.yml down -v   (apaga volumes!)
+# Subir:   ./scripts/up.sh
+# Parar:   ./scripts/down.sh
+#
+# Variáveis lidas de .env (na raiz do projeto). Defaults garantem que
+# funciona mesmo sem .env presente.
 
 name: rabbitride
 
 services:
-  # ---------------------------------------------------------------------------
-  # PostgreSQL — bancos transacionais (1 database por serviço)
-  # ---------------------------------------------------------------------------
   postgres:
     image: postgres:16-alpine
     container_name: rabbitride-postgres
     environment:
-      POSTGRES_USER: rabbitride
-      POSTGRES_PASSWORD: rabbitride
+      POSTGRES_USER: ${POSTGRES_USER:-rabbitride}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rabbitride}
       POSTGRES_DB: postgres
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rabbitride"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rabbitride}"]
       interval: 5s
       timeout: 5s
       retries: 10
     networks: [rabbitride-net]
 
-  # ---------------------------------------------------------------------------
-  # Redis — cache do catálogo de carros
-  # ---------------------------------------------------------------------------
   redis:
     image: redis:7-alpine
     container_name: rabbitride-redis
     ports:
-      - "6379:6379"
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -45,18 +41,15 @@ services:
       retries: 5
     networks: [rabbitride-net]
 
-  # ---------------------------------------------------------------------------
-  # RabbitMQ — broker de mensagens (com management UI em :15672)
-  # ---------------------------------------------------------------------------
   rabbitmq:
     image: rabbitmq:3-management-alpine
     container_name: rabbitride-rabbitmq
     environment:
-      RABBITMQ_DEFAULT_USER: rabbitride
-      RABBITMQ_DEFAULT_PASS: rabbitride
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-rabbitride}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-rabbitride}
     ports:
-      - "5672:5672"    # protocolo AMQP (publishers/consumers)
-      - "15672:15672"  # web UI (http://localhost:15672 — login rabbitride/rabbitride)
+      - "${RABBITMQ_AMQP_PORT:-5672}:5672"
+      - "${RABBITMQ_UI_PORT:-15672}:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -66,17 +59,13 @@ services:
       retries: 5
     networks: [rabbitride-net]
 
-  # ---------------------------------------------------------------------------
-  # MailHog — SMTP fake para capturar e-mails em dev (UI em :8025)
-  # ---------------------------------------------------------------------------
   mailhog:
     image: mailhog/mailhog:latest
     container_name: rabbitride-mailhog
     ports:
-      - "1025:1025"   # SMTP (notification-service aponta pra cá)
-      - "8025:8025"   # web UI (http://localhost:8025)
-    # MailHog usa imagem 'scratch' — sem shell, healthcheck inviável.
-    # Em produção sério, considere axllent/mailpit (fork moderno com healthcheck).
+      - "${MAILHOG_SMTP_PORT:-1025}:1025"
+      - "${MAILHOG_UI_PORT:-8025}:8025"
+    # MailHog usa scratch — sem healthcheck. Considere axllent/mailpit em produção.
     networks: [rabbitride-net]
 
 volumes:

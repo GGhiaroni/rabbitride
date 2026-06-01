@@ -1,0 +1,77 @@
+# ============================================================================
+# Java + Maven
+# ============================================================================
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.nar
+hs_err_pid*
+replay_pid*
+
+# Spring Boot
+HELP.md
+!**/src/main/**/HELP.md
+!**/src/test/**/HELP.md
+
+# Maven Wrapper — mantemos versionado, ignoramos só artefatos
+.mvn/wrapper/maven-wrapper.jar
+
+# ============================================================================
+# IDEs
+# ============================================================================
+# IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+.idea_modules/
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# Eclipse
+.classpath
+.project
+.settings/
+.factorypath
+bin/
+
+# NetBeans
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# ============================================================================
+# Sistemas operacionais
+# ============================================================================
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+*~
+
+# ============================================================================
+# Logs e dados locais
+# ============================================================================
+*.log
+logs/
+*.pid
+*.seed
+
+# ============================================================================
+# Variáveis de ambiente — NUNCA commitar credenciais
+# ============================================================================
+.env
+.env.local
+.env.*.local
+
+# ============================================================================
+# Docker
+# ============================================================================
+docker-compose.override.yml

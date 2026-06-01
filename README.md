@@ -1,13 +1,23 @@
 # rabbitride
 Sistema de aluguel de carros event-driven com Spring Boot, microsserviços e RabbitMQ
 
-## Subindo a infraestrutura local
+## Configuração local
+
+1. Copie as variáveis de ambiente:
 
 ```bash
-docker compose -f infra/docker-compose.yml up -d
+   cp .env.example .env
 ```
 
-Serviços e portas:
+2. (Opcional) ajuste credenciais e portas no `.env`.
+
+3. Suba a infraestrutura:
+
+```bash
+   ./scripts/up.sh
+```
+
+Serviços e portas (defaults):
 
 | Serviço   | Porta(s)       | UI / acesso                     |
 |-----------|----------------|---------------------------------|
@@ -16,7 +26,8 @@ Serviços e portas:
 | RabbitMQ  | 5672, 15672    | http://localhost:15672          |
 | MailHog   | 1025, 8025     | http://localhost:8025           |
 
-Credenciais default em dev: `rabbitride` / `rabbitride`.
+**Parar:** `./scripts/down.sh`
+**Limpar tudo (apaga dados):** `./scripts/down.sh --volumes`
 
-Para parar: `docker compose -f infra/docker-compose.yml down`
-Para limpar tudo (apaga dados): `docker compose -f infra/docker-compose.yml down -v`
+⚠️ Se mudar `POSTGRES_PASSWORD` no `.env` depois de já ter subido, é necessário recriar o volume:
+`./scripts/down.sh --volumes && ./scripts/up.sh`
