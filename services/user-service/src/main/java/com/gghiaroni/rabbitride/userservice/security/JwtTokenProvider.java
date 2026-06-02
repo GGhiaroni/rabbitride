@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.UUID;
 
 @Component
 public class JwtTokenProvider {
@@ -39,6 +40,10 @@ public class JwtTokenProvider {
 
     public String getEmailFromToken(String token) {
         return decode(token).getSubject();
+    }
+
+    public long getExpirationSeconds() {
+        return expirationMs / 1000;
     }
 
     public boolean isValid(String token) {
