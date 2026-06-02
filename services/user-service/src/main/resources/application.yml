@@ -21,6 +21,11 @@ spring:
     locations: classpath:db/migration
     baseline-on-migrate: true
 
+app:
+  jwt:
+    secret: ${JWT_SECRET:troque-isso-em-producao-use-um-secret-aleatorio-de-pelo-menos-256-bits-asdf1234}
+    expiration-ms: 3600000
+
 server:
   port: 8081
 
