@@ -1,0 +1,16 @@
+INSERT INTO carros (id, placa, modelo, marca, cor, ano, valor_diaria, status, versao)
+VALUES (gen_random_uuid(), 'ABC1234', 'Corolla', 'Toyota', 'Prata', 2022, 180.00, 'DISPONIVEL', 0),
+       (gen_random_uuid(), 'DEF5678', 'Civic', 'Honda', 'Preto', 2023, 220.00, 'DISPONIVEL', 0),
+       (gen_random_uuid(), 'GHI9012', 'Polo', 'Volkswagen', 'Branco', 2021, 120.00, 'DISPONIVEL', 0),
+       (gen_random_uuid(), 'JKL3456', 'Mobi', 'Fiat', 'Vermelho', 2020, 85.00, 'DISPONIVEL', 0),
+       (gen_random_uuid(), 'MNO7890', 'Onix', 'Chevrolet', 'Azul', 2022, 110.00, 'DISPONIVEL', 0),
+       (gen_random_uuid(), 'PQR4321', 'Ka', 'Ford', 'Cinza', 2019, 90.00, 'DISPONIVEL', 0),
+       (gen_random_uuid(), 'STU8765', 'HB20', 'Hyundai', 'Branco', 2023, 130.00, 'DISPONIVEL', 0),
+       (gen_random_uuid(), 'VWX2109', 'Yaris', 'Toyota', 'Prata', 2022, 150.00, 'DISPONIVEL', 0),
+       (gen_random_uuid(), 'YZA6543', 'Fit', 'Honda', 'Preto', 2021, 140.00, 'DISPONIVEL', 0),
+       (gen_random_uuid(), 'BCD0987', 'Virtus', 'Volkswagen', 'Vermelho', 2023, 170.00, 'RESERVADO', 0),
+       (gen_random_uuid(), 'EFG1357', 'Argo', 'Fiat', 'Branco', 2022, 115.00, 'RESERVADO', 0),
+       (gen_random_uuid(), 'HIJ2468', 'Tracker', 'Chevrolet', 'Preto', 2023, 250.00, 'ALUGADO', 0),
+       (gen_random_uuid(), 'KLM3579', 'Creta', 'Hyundai', 'Azul', 2022, 230.00, 'ALUGADO', 0),
+       (gen_random_uuid(), 'NOP4680', 'Renegade', 'Jeep', 'Verde', 2021, 280.00, 'MANUTENCAO', 0),
+       (gen_random_uuid(), 'QRS5791', '320i', 'BMW', 'Preto', 2023, 350.00, 'MANUTENCAO', 0);
