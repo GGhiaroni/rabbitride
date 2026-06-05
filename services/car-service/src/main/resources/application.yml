@@ -47,3 +47,8 @@ logging:
   level:
     com.gghiaroni.rabbitride: DEBUG
     org.springframework.web: INFO
+
+app:
+  security:
+    admin-token: ${ADMIN_API_TOKEN:dev-admin-token-troque-em-prod}
+    internal-token: ${INTERNAL_API_TOKEN:dev-internal-token-troque-em-prod}
