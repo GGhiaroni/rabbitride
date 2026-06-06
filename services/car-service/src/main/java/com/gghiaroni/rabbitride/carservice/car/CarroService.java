@@ -96,6 +96,7 @@ public class CarroService {
         @CacheEvict(value = "cars-by-id", key = "#id"),
         @CacheEvict(value = "cars-list", allEntries = true)
     })
+    @Transactional
     public CarroResponse reservar(UUID id){
         Carro carro = buscarEntidadePorId(id);
 
