@@ -28,11 +28,11 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/cars/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/carros/**").permitAll()
                 .requestMatchers("/internal/**").hasRole("INTERNAL")
-                .requestMatchers(HttpMethod.POST, "/cars/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/cars/**").hasRole("ADMIN")
-                .requestMatchers(HttpMethod.DELETE, "/cars/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.POST, "/carros/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/carros/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/carros/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class);
