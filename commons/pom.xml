@@ -13,4 +13,25 @@
 
     <artifactId>commons</artifactId>
     <packaging>jar</packaging>
+    <description>RabbitRide — código compartilhado: eventos AMQP, constantes, configuração JSON</description>
+
+    <dependencies>
+        <!-- AMQP — TopicExchange, Queue, Binding, MessageConverter -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
+        <!-- Suporte a java.time (Instant, LocalDateTime) no JSON -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+
+        <!-- @Configuration sem precisar do starter completo -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot</artifactId>
+        </dependency>
+    </dependencies>
 </project>
