@@ -33,13 +33,6 @@ public class RabbitTopologyConfig {
     }
 
     @Bean
-    public Queue rentalAnalysisCompletedQueue() {
-        return QueueBuilder.durable(Queues.RENTAL_ANALYSIS_COMPLETED)
-            .withArgument("x-dead-letter-exchange", Exchanges.RENTAL_DLX)
-            .build();
-    }
-
-    @Bean
     public Queue notificationQueue() {
         return QueueBuilder.durable(Queues.NOTIFICATION)
             .withArgument("x-dead-letter-exchange", Exchanges.RENTAL_DLX)
@@ -96,6 +89,6 @@ public class RabbitTopologyConfig {
         return BindingBuilder
             .bind(rentalDeadLetterQueue)
             .to(rentalDeadLetterExchange)
-            .with("#");   // ← captura QUALQUER routing key
+            .with("#");   // captura qualquer routing key
     }
 }
