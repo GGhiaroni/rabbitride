@@ -48,4 +48,19 @@ public class Rental {
     @UpdateTimestamp
     @Column(name = "atualizado_em", nullable = false)
     private Instant atualizadoEm;
+
+    public void marcarComoRejeitado(String motivo){
+        this.status = StatusRental.REJEITADO;
+        this.motivoFalha = motivo;
+    }
+
+    public void marcarComoConfirmado(){
+        this.status = StatusRental.CONFIRMADO;
+        this.motivoFalha = null;
+    }
+
+    public void marcarComoFalha(String motivo){
+        this.status = StatusRental.FALHOU;
+        this.motivoFalha = motivo;
+    }
 }
