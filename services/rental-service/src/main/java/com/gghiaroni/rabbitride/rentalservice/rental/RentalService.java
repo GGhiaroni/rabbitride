@@ -1,11 +1,18 @@
 package com.gghiaroni.rabbitride.rentalservice.rental;
 
+import com.gghiaroni.rabbitride.commons.events.AnalysisCompletedEvent;
+import com.gghiaroni.rabbitride.commons.events.RentalConfirmedEvent;
+import com.gghiaroni.rabbitride.commons.events.RentalFailedEvent;
 import com.gghiaroni.rabbitride.commons.events.RentalRequestedEvent;
 import com.gghiaroni.rabbitride.commons.messaging.Exchanges;
 import com.gghiaroni.rabbitride.commons.messaging.RoutingKeys;
+import com.gghiaroni.rabbitride.rentalservice.integration.car.CarServiceClient;
+import com.gghiaroni.rabbitride.rentalservice.integration.car.CarroResponse;
+import com.gghiaroni.rabbitride.rentalservice.integration.car.exception.CarroIndisponivelException;
 import com.gghiaroni.rabbitride.rentalservice.rental.dto.CreateRentalRequest;
 import com.gghiaroni.rabbitride.rentalservice.rental.dto.RentalResponse;
 import com.gghiaroni.rabbitride.rentalservice.rental.exception.RentalEmAndamentoException;
+import com.gghiaroni.rabbitride.rentalservice.rental.exception.RentalNaoEncontradoException;
 import com.gghiaroni.rabbitride.rentalservice.security.AuthenticatedUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,9 +36,12 @@ public class RentalService {
 
     private final RabbitTemplate rabbitTemplate;
 
-    public RentalService(RentalRepository rentalRepository, RabbitTemplate rabbitTemplate) {
+    private final CarServiceClient carServiceClient;
+
+    public RentalService(RentalRepository rentalRepository, RabbitTemplate rabbitTemplate, CarServiceClient carServiceClient) {
         this.rentalRepository = rentalRepository;
         this.rabbitTemplate = rabbitTemplate;
+        this.carServiceClient = carServiceClient;
     }
 
     @Transactional
@@ -66,5 +76,56 @@ public class RentalService {
         log.info("Evento RentalRequested publicado: eventId={}, rentalId={}", evento.eventId(), salvo.getId());
 
         return RentalResponse.from(salvo);
+    }
+
+    @Transactional
+    public void processarResultadoAnalise(AnalysisCompletedEvent event){
+        Rental rental = rentalRepository.findById(event.rentalId())
+            .orElseThrow(()-> new RentalNaoEncontradoException(event.rentalId()));
+
+        if(event.resultado() == AnalysisCompletedEvent.Resultado.REJECTED){
+            processarRejeicao(rental, event.motivo());
+        } else {
+            processarAprovacao(rental);
+        }
+    }
+
+    private void processarRejeicao(Rental rental, String motivo){
+        rental.marcarComoRejeitado(motivo);
+        log.info("Rental {} rejeitado: {}", rental.getId(), motivo);
+        publicarRentalFailed(rental, motivo);
+    }
+
+    private void processarAprovacao(Rental rental){
+        try {
+            CarroResponse carro = carServiceClient.reservar(rental.getCarroId());
+            rental.marcarComoConfirmado();
+            log.info("Rental {} confirmado: carro {} reservado", rental.getId(), carro.placa());
+            publicarRentalConfirmed(rental, carro);
+        } catch (CarroIndisponivelException ex) {
+            String motivo = "Carro não está mais disponível para reserva.";
+            rental.marcarComoFalha(motivo);
+            log.warn("Rental {} falhou: {}", rental.getId(), motivo);
+            publicarRentalFailed(rental, motivo);
+        }
+    }
+
+    private void publicarRentalConfirmed(Rental rental, CarroResponse carro) {
+        String descricao = String.format("%s %s %s (%d)",
+            carro.marca(), carro.modelo(), carro.cor(), carro.ano());
+
+        RentalConfirmedEvent evento = RentalConfirmedEvent.of(
+            rental.getId(), rental.getUserEmail(), descricao);
+
+        rabbitTemplate.convertAndSend(
+            Exchanges.RENTAL, RoutingKeys.RENTAL_CONFIRMED, evento);
+    }
+
+    private void publicarRentalFailed(Rental rental, String motivo) {
+        RentalFailedEvent evento = RentalFailedEvent.of(
+            rental.getId(), rental.getUserEmail(), motivo);
+
+        rabbitTemplate.convertAndSend(
+            Exchanges.RENTAL, RoutingKeys.RENTAL_FAILED, evento);
     }
 }
