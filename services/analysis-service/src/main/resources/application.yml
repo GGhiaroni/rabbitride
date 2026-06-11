@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: analysis-service
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/analysis_db
+    username: ${POSTGRES_USER:rabbitride}
+    password: ${POSTGRES_PASSWORD:rabbitride}
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_AMQP_PORT:5672}
+    username: ${RABBITMQ_USER:rabbitride}
+    password: ${RABBITMQ_PASSWORD:rabbitride}
+    listener:
+      simple:
+        retry:
+          enabled: true
+          max-attempts: 3
+          initial-interval: 1000ms
+          multiplier: 3
+          max-interval: 10000ms
+        default-requeue-rejected: false
+
+server:
+  port: 8084
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: when_authorized
+
+logging:
+  level:
+    com.gghiaroni.rabbitride: DEBUG
+    org.springframework.web: INFO
