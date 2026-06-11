@@ -9,6 +9,8 @@ import com.gghiaroni.rabbitride.commons.messaging.RoutingKeys;
 import com.gghiaroni.rabbitride.rentalservice.integration.car.CarServiceClient;
 import com.gghiaroni.rabbitride.rentalservice.integration.car.CarroResponse;
 import com.gghiaroni.rabbitride.rentalservice.integration.car.exception.CarroIndisponivelException;
+import com.gghiaroni.rabbitride.rentalservice.messaging.ProcessedEvent;
+import com.gghiaroni.rabbitride.rentalservice.messaging.ProcessedEventRepository;
 import com.gghiaroni.rabbitride.rentalservice.rental.dto.CreateRentalRequest;
 import com.gghiaroni.rabbitride.rentalservice.rental.dto.RentalResponse;
 import com.gghiaroni.rabbitride.rentalservice.rental.exception.RentalEmAndamentoException;
@@ -32,16 +34,21 @@ public class RentalService {
         StatusRental.APROVADO
     );
 
+    private static final String CONSUMER_NAME = "rental-service.AnalysisCompletedConsumer";
+
     private final RentalRepository rentalRepository;
 
     private final RabbitTemplate rabbitTemplate;
 
     private final CarServiceClient carServiceClient;
 
-    public RentalService(RentalRepository rentalRepository, RabbitTemplate rabbitTemplate, CarServiceClient carServiceClient) {
+    private final ProcessedEventRepository processedEventRepository;
+
+    public RentalService(RentalRepository rentalRepository, RabbitTemplate rabbitTemplate, CarServiceClient carServiceClient, ProcessedEventRepository processedEventRepository) {
         this.rentalRepository = rentalRepository;
         this.rabbitTemplate = rabbitTemplate;
         this.carServiceClient = carServiceClient;
+        this.processedEventRepository = processedEventRepository;
     }
 
     @Transactional
@@ -80,6 +87,12 @@ public class RentalService {
 
     @Transactional
     public void processarResultadoAnalise(AnalysisCompletedEvent event){
+        if (processedEventRepository.existsById(event.eventId())) {
+            log.info("Evento já processado, ignorando: eventId={}, rentalId={}",
+                event.eventId(), event.rentalId());
+            return;
+        }
+
         Rental rental = rentalRepository.findById(event.rentalId())
             .orElseThrow(()-> new RentalNaoEncontradoException(event.rentalId()));
 
@@ -88,6 +101,8 @@ public class RentalService {
         } else {
             processarAprovacao(rental);
         }
+
+        processedEventRepository.save(new ProcessedEvent(event.eventId(), CONSUMER_NAME));
     }
 
     private void processarRejeicao(Rental rental, String motivo){
