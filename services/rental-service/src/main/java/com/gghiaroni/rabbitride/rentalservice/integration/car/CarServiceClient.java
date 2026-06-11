@@ -8,7 +8,7 @@ import java.util.UUID;
 
 @FeignClient(
     name="car-service",
-    url= "${car-service-url}",
+    url= "${car-service.url}",
     configuration = CarServiceFeignConfig.class
 )
 public interface CarServiceClient {
