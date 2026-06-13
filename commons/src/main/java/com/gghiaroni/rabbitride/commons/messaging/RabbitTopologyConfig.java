@@ -32,13 +32,6 @@ public class RabbitTopologyConfig {
             .build();
     }
 
-    @Bean
-    public Queue notificationQueue() {
-        return QueueBuilder.durable(Queues.NOTIFICATION)
-            .withArgument("x-dead-letter-exchange", Exchanges.RENTAL_DLX)
-            .build();
-    }
-
     //bindings
     @Bean
     public Binding analysisRequestedBinding(Queue analysisRequestedQueue, TopicExchange rentalExchange) {
@@ -56,18 +49,34 @@ public class RabbitTopologyConfig {
             .with(RoutingKeys.ANALYSIS_COMPLETED);
     }
 
+    //queues — uma por tipo de evento
     @Bean
-    public Binding notificationConfirmedBinding(Queue notificationQueue, TopicExchange rentalExchange) {
+    public Queue notificationConfirmedQueue() {
+        return QueueBuilder.durable(Queues.NOTIFICATION_CONFIRMED)
+            .withArgument("x-dead-letter-exchange", Exchanges.RENTAL_DLX)
+            .build();
+    }
+
+    @Bean
+    public Queue notificationFailedQueue() {
+        return QueueBuilder.durable(Queues.NOTIFICATION_FAILED)
+            .withArgument("x-dead-letter-exchange", Exchanges.RENTAL_DLX)
+            .build();
+    }
+
+    //bindings — cada queue com sua routing key
+    @Bean
+    public Binding notificationConfirmedBinding(Queue notificationConfirmedQueue, TopicExchange rentalExchange) {
         return BindingBuilder
-            .bind(notificationQueue)
+            .bind(notificationConfirmedQueue)
             .to(rentalExchange)
             .with(RoutingKeys.RENTAL_CONFIRMED);
     }
 
     @Bean
-    public Binding notificationFailedBinding(Queue notificationQueue, TopicExchange rentalExchange) {
+    public Binding notificationFailedBinding(Queue notificationFailedQueue, TopicExchange rentalExchange) {
         return BindingBuilder
-            .bind(notificationQueue)
+            .bind(notificationFailedQueue)
             .to(rentalExchange)
             .with(RoutingKeys.RENTAL_FAILED);
     }
