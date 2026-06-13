@@ -33,6 +33,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/carros/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.PUT, "/carros/**").hasRole("ADMIN")
                 .requestMatchers(HttpMethod.DELETE, "/carros/**").hasRole("ADMIN")
+                .requestMatchers(
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/v3/api-docs/**"
+                ).permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(apiKeyFilter, UsernamePasswordAuthenticationFilter.class);
